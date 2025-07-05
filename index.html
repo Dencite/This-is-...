@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UC Medal Deck Finder</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 40px; }
+    input { padding: 10px; width: 200px; }
+    button { padding: 10px 20px; margin-left: 10px; }
+    .card { display: inline-block; margin: 10px; text-align: center; }
+    img { width: 80px; height: auto; }
+  </style>
+</head>
+<body>
+  <h1>Clash Royale Deck Finder</h1>
+  <p>Enter opponent's Ultimate Champion medals:</p>
+  <input type="number" id="medals" />
+  <button onclick="getDeck()">Get Deck</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function getDeck() {
+      const medals = document.getElementById("medals").value;
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "Loading...";
+
+      const res = await fetch("/get_deck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ medals: parseInt(medals) })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        resultDiv.innerHTML = `<p style='color:red;'>${data.error}</p>`;
+        return;
+      }
+
+      resultDiv.innerHTML = "<h2>Deck:</h2>";
+      data.deck.forEach(card => {
+        resultDiv.innerHTML += `
+          <div class="card">
+            <img src="${card.icon}" alt="${card.name}" />
+            <div>${card.name} (Lvl ${card.level})</div>
+          </div>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
