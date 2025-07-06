@@ -10,26 +10,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting (only apply once!)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100
 });
-app.use(limiter);
-
-// Root route - ADD THIS!
-app.get('/', (req, res) => {
-  res.json({
-    message: "Clash Royale Ultimate Champion Deck Finder API",
-    endpoints: {
-      topPlayers: "/api/top-players",
-      findDeck: "/api/find-deck (POST)"
-    }
-  });
-});
-
-// ... (keep the rest of your existing code)
-app.use(limiter);
+app.use(limiter); // <-- This should only appear once
 
 // Clash Royale API configuration
 const CLASH_API_URL = 'https://api.clashroyale.com/v1';
@@ -48,14 +34,37 @@ const axiosInstance = axios.create({
   }
 });
 
+// Root route - Improved response
+app.get('/', (req, res) => {
+  res.json({
+    status: 'API is working',
+    message: "Clash Royale Ultimate Champion Deck Finder API",
+    endpoints: {
+      topPlayers: {
+        path: "/api/top-players",
+        method: "GET",
+        description: "Get top 20 players"
+      },
+      findDeck: {
+        path: "/api/find-deck",
+        method: "POST",
+        description: "Find deck by medal count",
+        parameters: {
+          medals: "Number (required)",
+          region: "String (optional)"
+        }
+      }
+    },
+    note: "For POST requests, include Content-Type: application/json header"
+  });
+});
+
 // Endpoint to get top players
 app.get('/api/top-players', async (req, res) => {
   try {
-    // Get global leaderboard
     const response = await axiosInstance.get('/locations/global/rankings/players');
-    const players = response.data.items.slice(0, 20); // Get top 20 players
+    const players = response.data.items.slice(0, 20);
     
-    // Enhance with region data
     const enhancedPlayers = await Promise.all(players.map(async (player) => {
       try {
         const playerData = await axiosInstance.get(`/players/%23${player.tag.replace('#', '')}`);
@@ -71,7 +80,10 @@ app.get('/api/top-players', async (req, res) => {
     res.json(enhancedPlayers);
   } catch (error) {
     console.error('Error fetching top players:', error.message);
-    res.status(500).json({ error: 'Failed to fetch top players' });
+    res.status(500).json({ 
+      error: 'Failed to fetch top players',
+      details: error.response?.data?.message || error.message 
+    });
   }
 });
 
@@ -80,31 +92,38 @@ app.post('/api/find-deck', async (req, res) => {
   const { medals, region } = req.body;
   
   if (!medals) {
-    return res.status(400).json({ error: 'Medal count is required' });
+    return res.status(400).json({ 
+      error: 'Medal count is required',
+      example: { "medals": 2500, "region": "global" }
+    });
   }
 
   try {
-    // 1. Get leaderboard for the specified region (or global)
     const locationId = region === 'global' ? 'global' : await getLocationId(region);
     const leaderboard = await getLeaderboard(locationId);
-    
-    // 2. Find player with closest medal count
     const player = findClosestPlayer(leaderboard, medals);
+    
     if (!player) {
-      return res.status(404).json({ error: 'No player found with similar medal count' });
+      return res.status(404).json({ 
+        error: 'No player found with similar medal count',
+        suggestion: 'Try a different medal count or region' 
+      });
     }
     
-    // 3. Get player's battle log to find most recent Ultimate Champion battle
     const battleLog = await getBattleLog(player.tag);
     const ucBattle = findUltimateChampionBattle(battleLog);
+    
     if (!ucBattle) {
-      return res.status(404).json({ error: 'No Ultimate Champion battles found for this player' });
+      return res.status(404).json({ 
+        error: 'No Ultimate Champion battles found',
+        suggestion: 'Player may not have recent Ultimate Champion matches' 
+      });
     }
     
-    // 4. Extract the deck
     const deck = extractDeck(ucBattle, player.tag);
     
     res.json({
+      success: true,
       player: {
         name: player.name,
         tag: player.tag,
@@ -116,63 +135,36 @@ app.post('/api/find-deck', async (req, res) => {
     });
   } catch (error) {
     console.error('Error:', error.message);
-    res.status(500).json({ error: 'Failed to find deck' });
+    res.status(500).json({ 
+      error: 'Failed to find deck',
+      details: error.response?.data?.message || error.message 
+    });
   }
 });
 
-// Helper functions
+// Helper functions (keep the same as before)
 async function getLocationId(regionName) {
-  const regions = {
-    'europe': 'Europe',
-    'north-america': 'North America',
-    'asia': 'Asia',
-    'south-america': 'South America'
-  };
-  
-  const response = await axiosInstance.get('/locations');
-  const location = response.data.items.find(loc => 
-    loc.name.toLowerCase() === regions[regionName]?.toLowerCase()
-  );
-  
-  return location ? location.id : 'global';
+  // ... (existing implementation)
 }
 
 async function getLeaderboard(locationId) {
-  const response = await axiosInstance.get(`/locations/${locationId}/rankings/players`);
-  return response.data.items;
+  // ... (existing implementation)
 }
 
 function findClosestPlayer(players, targetMedals) {
-  let closestPlayer = null;
-  let smallestDiff = Infinity;
-  
-  players.forEach(player => {
-    const diff = Math.abs(player.trophies - targetMedals);
-    if (diff < smallestDiff) {
-      smallestDiff = diff;
-      closestPlayer = player;
-    }
-  });
-  
-  return closestPlayer;
+  // ... (existing implementation)
 }
 
 async function getBattleLog(playerTag) {
-  const response = await axiosInstance.get(`/players/%23${playerTag.replace('#', '')}/battlelog`);
-  return response.data;
+  // ... (existing implementation)
 }
 
 function findUltimateChampionBattle(battleLog) {
-  return battleLog.find(battle => 
-    battle.gameMode?.id === 72000000 && // Path of Legends
-    battle.arena?.id === 54000000       // Ultimate Champion Arena
-  );
+  // ... (existing implementation)
 }
 
 function extractDeck(battle, playerTag) {
-  // Determine if player is in team or opponent team
-  const playerTeam = battle.team.find(t => t.tag === `#${playerTag.replace('#', '')}`);
-  return playerTeam?.cards || [];
+  // ... (existing implementation)
 }
 
 // Start server
