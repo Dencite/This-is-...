@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
     endpoints: {
       topPlayers: "/api/top-players",
       findDeck: "/api/find-deck (POST)"
-};
+}
 
 // Rate limiting (100 requests per 15 minutes)
 const limiter = rateLimit({
