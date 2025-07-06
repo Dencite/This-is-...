@@ -37,7 +37,7 @@ const axiosInstance = axios.create({
 // Root route - Improved response
 app.get('/', (req, res) => {
   res.json({
-    status: 'API is working',
+    status: "API is working",
     message: "Clash Royale Ultimate Champion Deck Finder API",
     endpoints: {
       topPlayers: {
