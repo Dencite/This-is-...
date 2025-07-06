@@ -1,53 +1,321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>UC Medal Deck Finder</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; margin: 40px; }
-    input { padding: 10px; width: 200px; }
-    button { padding: 10px 20px; margin-left: 10px; }
-    .card { display: inline-block; margin: 10px; text-align: center; }
-    img { width: 80px; height: auto; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Clash Royale Ultimate Champion Deck Finder</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --primary: #ffcc00;
+            --secondary: #1a2a6c;
+            --dark: #0a0e2a;
+            --light: #f8f9fa;
+            --card-bg: rgba(26, 42, 108, 0.85);
+            --success: #4CAF50;
+            --danger: #f44336;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--secondary), var(--dark));
+            color: var(--light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        
+        /* (Keep all the CSS styles from previous mobile version) */
+        /* ... */
+    </style>
 </head>
 <body>
-  <h1>Clash Royale Deck Finder</h1>
-  <p>Enter opponent's Ultimate Champion medals:</p>
-  <input type="number" id="medals" />
-  <button onclick="getDeck()">Get Deck</button>
+    <i class="fas fa-crown crown"></i>
+    
+    <div class="header">
+        <h1><i class="fas fa-crown"></i> Ultimate Champion Deck Finder</h1>
+        <p>Enter an opponent's medal count to reveal their recently used deck in the Path of Legends</p>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-search"></i> Find Opponent Deck</h2>
+            
+            <div class="tabs">
+                <button class="tab active" data-tab="search">Search</button>
+                <button class="tab" data-tab="top-players">Top Players</button>
+            </div>
+            
+            <div class="tab-content active" id="search-tab">
+                <div class="input-group">
+                    <div class="input-row">
+                        <label for="medalCount">Opponent's Medal Count</label>
+                        <input type="number" id="medalCount" placeholder="e.g. 2250" min="1800" max="3000">
+                    </div>
+                    
+                    <div class="input-row">
+                        <label for="region">Region</label>
+                        <select id="region">
+                            <option value="global">Global</option>
+                            <option value="europe">Europe</option>
+                            <option value="north-america">North America</option>
+                            <option value="asia">Asia</option>
+                            <option value="south-america">South America</option>
+                        </select>
+                    </div>
+                    
+                    <button id="findDeckBtn">
+                        <i class="fas fa-shield-alt"></i> Find Deck
+                    </button>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="top-players-tab">
+                <h3><i class="fas fa-trophy"></i> Current Top Players</h3>
+                <div class="top-players-list" id="topPlayers">
+                    <!-- Top players will be loaded here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Scanning the Arena for your opponent...</p>
+        </div>
+        
+        <div class="error" id="error">
+            <p><i class="fas fa-exclamation-triangle"></i> <span id="errorMessage">Player not found. Try a different medal count.</span></p>
+        </div>
+        
+        <div class="card" id="resultCard" style="display: none;">
+            <h2><i class="fas fa-cards"></i> Recently Used Deck</h2>
+            
+            <div class="player-info">
+                <div class="player-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="player-details">
+                    <div class="player-name" id="playerName">Player Name</div>
+                    <div class="player-stats">
+                        <div class="stat">
+                            <i class="fas fa-medal"></i>
+                            <span id="playerMedals">2250</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-globe"></i>
+                            <span id="playerRegion">Global</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-trophy"></i>
+                            <span id="playerRank">#125</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="deck-container" id="deckContainer">
+                <!-- Deck cards will be loaded here -->
+            </div>
+        </div>
+    </div>
 
-  <div id="result"></div>
-
-  <script>
-    async function getDeck() {
-      const medals = document.getElementById("medals").value;
-      const resultDiv = document.getElementById("result");
-      resultDiv.innerHTML = "Loading...";
-
-      const res = await fetch("/get_deck", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ medals: parseInt(medals) })
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        resultDiv.innerHTML = `<p style='color:red;'>${data.error}</p>`;
-        return;
-      }
-
-      resultDiv.innerHTML = "<h2>Deck:</h2>";
-      data.deck.forEach(card => {
-        resultDiv.innerHTML += `
-          <div class="card">
-            <img src="${card.icon}" alt="${card.name}" />
-            <div>${card.name} (Lvl ${card.level})</div>
-          </div>
-        `;
-      });
-    }
-  </script>
+    <script>
+        // Configuration - Replace with your Render backend URL
+        const BACKEND_URL = "https://your-render-app-name.onrender.com";
+        
+        // DOM elements
+        const medalCountInput = document.getElementById('medalCount');
+        const regionSelect = document.getElementById('region');
+        const findDeckBtn = document.getElementById('findDeckBtn');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultCard = document.getElementById('resultCard');
+        const playerName = document.getElementById('playerName');
+        const playerMedals = document.getElementById('playerMedals');
+        const playerRegion = document.getElementById('playerRegion');
+        const playerRank = document.getElementById('playerRank');
+        const deckContainer = document.getElementById('deckContainer');
+        const topPlayersList = document.getElementById('topPlayers');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // Initialize the page
+        async function initPage() {
+            // Load top players on first tab click
+            document.querySelector('[data-tab="top-players"]').addEventListener('click', loadTopPlayers);
+            
+            // Tab switching
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(tc => tc.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+        }
+        
+        // Load top players from backend
+        async function loadTopPlayers() {
+            try {
+                topPlayersList.innerHTML = '<p>Loading top players...</p>';
+                
+                const response = await fetch(`${BACKEND_URL}/api/top-players`);
+                const players = await response.json();
+                
+                if (!players || players.length === 0) {
+                    topPlayersList.innerHTML = '<p>No top players found</p>';
+                    return;
+                }
+                
+                renderTopPlayers(players);
+            } catch (error) {
+                console.error("Error loading top players:", error);
+                topPlayersList.innerHTML = '<p>Failed to load top players</p>';
+            }
+        }
+        
+        // Render top players list
+        function renderTopPlayers(players) {
+            topPlayersList.innerHTML = '';
+            
+            players.forEach(player => {
+                const playerEl = document.createElement('div');
+                playerEl.className = 'player-info';
+                playerEl.style.marginTop = '10px';
+                playerEl.style.cursor = 'pointer';
+                
+                playerEl.innerHTML = `
+                    <div class="player-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="player-details">
+                        <div class="player-name">${player.name} ${player.tag}</div>
+                        <div class="player-stats">
+                            <div class="stat">
+                                <i class="fas fa-medal"></i>
+                                <span>${player.trophies || player.medals}</span>
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-globe"></i>
+                                <span>${player.region || 'Global'}</span>
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-trophy"></i>
+                                <span>#${player.rank}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Click to search this player
+                playerEl.addEventListener('click', () => {
+                    tabs[0].click();
+                    medalCountInput.value = player.trophies || player.medals;
+                    regionSelect.value = (player.region || 'global').toLowerCase().replace(' ', '-');
+                    findDeck();
+                });
+                
+                topPlayersList.appendChild(playerEl);
+            });
+        }
+        
+        // Find deck function
+        async function findDeck() {
+            const medals = parseInt(medalCountInput.value);
+            const region = regionSelect.value;
+            
+            if (!medals || medals < 1800) {
+                showError("Please enter a valid medal count (1800-3000)");
+                return;
+            }
+            
+            // Show loading
+            loadingDiv.style.display = 'flex';
+            errorDiv.style.display = 'none';
+            resultCard.style.display = 'none';
+            
+            try {
+                // Call backend API
+                const response = await fetch(`${BACKEND_URL}/api/find-deck`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        medals: medals,
+                        region: region
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || "Failed to find player");
+                }
+                
+                renderPlayerInfo(data.player);
+                renderDeck(data.deck);
+                resultCard.style.display = 'block';
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (error) {
+                console.error("Error:", error);
+                showError(error.message || "Player not found. Try a different medal count or region.");
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+        
+        // Render player info
+        function renderPlayerInfo(player) {
+            playerName.textContent = `${player.name} ${player.tag}`;
+            playerMedals.textContent = player.trophies || player.medals;
+            playerRegion.textContent = player.region || 'Global';
+            playerRank.textContent = player.rank ? `#${player.rank}` : 'N/A';
+        }
+        
+        // Render deck
+        function renderDeck(deck) {
+            deckContainer.innerHTML = '';
+            
+            deck.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'deck-card';
+                cardElement.innerHTML = `
+                    <div class="card-icon">
+                        <img src="${card.iconUrls.medium}" alt="${card.name}" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <div class="card-name">${card.name}</div>
+                    <div class="card-level">Lvl ${card.level}</div>
+                `;
+                deckContainer.appendChild(cardElement);
+            });
+        }
+        
+        // Show error
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        // Initialize the page
+        initPage();
+    </script>
 </body>
 </html>
