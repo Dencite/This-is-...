@@ -10,20 +10,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Add this near your other routes (before app.listen)
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
+});
+app.use(limiter);
+
+// Root route - ADD THIS!
 app.get('/', (req, res) => {
   res.json({
     message: "Clash Royale Ultimate Champion Deck Finder API",
     endpoints: {
       topPlayers: "/api/top-players",
       findDeck: "/api/find-deck (POST)"
-}
-
-// Rate limiting (100 requests per 15 minutes)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
+    }
+  });
 });
+
+// ... (keep the rest of your existing code)
 app.use(limiter);
 
 // Clash Royale API configuration
